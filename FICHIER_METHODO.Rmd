@@ -1,0 +1,801 @@
+---
+title: <font color="#CC0000">Exercice d'application ; analyse de l'accessibilité aux hopitaux dans le dépertement du Gard- Occitanie<div align="center"></div></font>
+author : <font color="red">Ramdane YAHIATENE</font>
+date: <font color="red">26/11/2019</font>
+output:
+  rmdformats::readthedown:
+    self_contained: true
+    thumbnails: false
+    lightbox: true
+    gallery: true
+    highlight: tango
+---
+
+<link rel="stylesheet" type="text/css" media="all" href="css/style.css" />
+
+<div align="justify">L’organisation  de l’espace autour des centres des villes et des espaces périphériques qui gravitent autour de ceux-ci favorise l’implantation des services et activités de la ville dans les lieux les plus centraux - les plus accessibles- censés maximiser l’accès aux usagers. Ce sont alors les positions relatives de localisation par rapport à un centre qui déterminent l’accès à ce dernier et aux ressources qu’il concentre, compte tenu de sa position centrale. Cela induit à des inégalités en termes d’équipement entre un monde urbain souvent mieux équipée qu’un monde rural. Mais au-delà de ces inégalités binaires, la distribution spatiale des équipements est hétérogène et inégalitaire même au sein de ces ensembles. Dans les lignes qui suivent nous nous intéressons à l’offre en hôpitaux dans le département du Gard - région d’Occitanie- de manière à caractériser l’offre en hôpitaux quant à des populations fragiles en se basant sur un usage théorique. 
+</div> 
+
+```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE} 
+knitr::opts_chunk$set(cache = TRUE)
+
+```
+
+# <font color=#2ca25f>Chargement des pckages</font>
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(sf)
+library(dplyr)
+library(cartography)
+library(reshape2)
+library(units)
+library(osrm)
+library(ggplot2)
+library(SpatialPosition)
+    
+
+```
+
+# <font color=#2ca25f>Chargement des données</font>
+
+<a href="https://www.dropbox.com/s/conihfnwpabbkoo/Data_exercice_GARD.rar?dl=0">**Vous pouvez les télécharger ici** </a>
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+shp_hop <-  st_read(dsn ="Data_exercice_GARD/HOPITAUX/Gard_BdTopo_SantÃ©_pai_L93.shp")
+
+shp_iris <-  st_read(dsn="Data_exercice_GARD/IRIS/GARD_IRIS2010_L93.shp")
+
+shp_iris <-  mutate(shp_iris, dep="Gard")
+
+shp_dep <-  shp_iris %>% group_by(dep) %>% summarise(n=n())
+
+shp_car_insee <- st_read(dsn="Data_exercice_GARD/POPULATION_INSEE_PAR_CARREAU_&_RECTANGLE/GARD_CarroINSEE_statCARO_statRECT_L93_bis.shp")
+
+shp_hop <-  st_transform(shp_hop, st_crs(shp_iris))
+
+```
+# <font color=#2ca25f>Localisation des hopitaux</font>
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+par(mar = c(0.5,0.5,1.5,0.5),bg="grey")
+plot(st_geometry(shp_iris), col= "grey90", border= "white")
+plot(shp_hop$geometry, pch=19, col="red", add=T, cex=0.5)
+
+layoutLayer(title = "Localisation des hopitaux" ,
+            sources = " (IGN 2015)",
+            author =" © Ramdane YAHIATENE,Univ-Paris1, 2019", 
+            tabtitle = FALSE,
+            frame = TRUE,theme = "black.pal",
+            south = TRUE)
+
+```
+
+<div align="justify">
+En fait, il existe plusieurs modèles qui en simplifiant plus au moins le comportement spatial des individus permettent de les comprendre – ou les rendre compréhensibles. Ces différents modèles théoriques déterministes ou probabilistes soient-ils, cherchent à déterminer la partition d’un espace à partir d’une utilisation théorique des services ou à estimer la position des agents – des individus – quant à des lieux d’intérêts qu’ils chercheraient à rejoindre dans le but de satisfaire un besoin. 
+Dans notre cas d’étude nous cherchons à déterminer- délimiter- des aires d’influences théoriques des hôpitaux en se basant sur le modèle du « plus proche voisin » qui repose sur l’hypothèse stipulant que chaque individu – agent – s’orienterait vers l’hôpital le plus proche. Cela suppose que les individus sont également informés et ont la même connaissance et les mêmes conceptions de l’espace qui font qu’ils opteraient pour le même choix rationnel- supposé rationnel- du plus-proche. 
+</div> 
+
+
+# <font color=#2ca25f>Le plus proche voisin</font>
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+# recuperer l'identifiant de la ressource la plus proche de chaque commune 
+
+point_plus_proche <- st_nearest_feature(st_centroid(st_geometry(shp_iris)),st_geometry(shp_hop))
+
+# ajouter le resultat obtenu ci-dessus au shp 
+point_plus_proche <- cbind(point_plus_proche, shp_iris)
+
+# transofrmation en tableau 
+point_plus_proche<- as.data.frame(point_plus_proche)
+
+# ajouter une colonne id 
+shp_r <- shp_hop %>% mutate(id.1=(1: nrow(shp_hop)))
+
+# transformation en tableau 
+shp_r<- as.data.frame(shp_r)
+
+# selection des deux premieres colonnes 
+shp_r <- shp_r %>% select(id.1,geometry)
+
+# renommer les colonnes 
+colnames(shp_r) <- c("id.1","geom.1")
+
+# extraction des centroides des communes 
+point_plus_proche$centr <- st_centroid(st_geometry(shp_iris))
+
+# selection des colonnes qui nous interesse 
+point_plus_proche<-  point_plus_proche %>% select(point_plus_proche, centr)
+
+# jointure pour recuperer la geometrie des points les plus proches de chaque commune ( jusqu'ici on n'avait que leur numero de ligne dans le tableau)
+geom_point_plus_proche <- merge(point_plus_proche, shp_r, by.x = "point_plus_proche", 
+                                    by.y = "id.1")
+
+
+# transformation en tableau ( necessaire pour avoir la main sur les colonnes du tableau)
+point_plus_proche <- as.data.frame(geom_point_plus_proche)
+
+# cordonnees xy des centroides des communes ( les origines)
+XY<- st_coordinates(point_plus_proche$centr)
+
+# cordonnees xy de la ressource la plus proche 
+xy <- st_coordinates(point_plus_proche$geom.1)
+
+# transformation en tableau 
+xy<- as.data.frame(xy)
+
+#  garder que les colonnes qui nous interesse 
+xy<- xy %>% select(X,Y)
+
+# renommer pour eviter de melanger les cordonnes des origines ( les communes ) et celles des destinations ( les ressources)
+colnames(xy) <- c("x1","y1")
+
+# regrouper nos calculs dans un seul tableau 
+cord_plus_proche<- cbind(point_plus_proche,XY,xy)
+
+
+```
+
+# <font color=#2ca25f>Segments vers les hopitaux les plus proches</font>
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+par(mar = c(0.5,0.5,1.5,0.5))
+plot(st_geometry(shp_iris),col=NA,border="grey")
+
+# légende 
+legend("topleft","Iris",cex=.8,col="blue",pch=19,box.lty=0,box.col=NA)
+legend("top","Hopital",pch=3,col = "black", box.lty = 0,box.col = NA, cex = .8)
+legend("topright","Lien           ",cex= .8,col="#2ca25f",lty=1, box.lty = 0,box.col = NA)
+
+# carto 
+plot(point_plus_proche$centr,add=T, pch=19, cex=0.2, col="blue")
+segments(cord_plus_proche$X,cord_plus_proche$Y, cord_plus_proche$x1,cord_plus_proche$y1,
+         col="#2ca25f")
+plot(point_plus_proche$geom.1, col="black", cex=0.4,pch=3,add=T)
+
+# layout 
+layoutLayer(title = "Liens iris/ hopital le plus proche ",
+            tabtitle = FALSE,
+            author =" © Ramdane YAHIATENE,Univ-Paris1, 2019", 
+            frame = TRUE,theme = "black.pal",
+            south = TRUE)
+```
+
+# <font color=#2ca25f>Détermination - délimitation- d'aires d'influences théoriques</font>
+
+<div align="justify">Dans le but de rechercher l’adaptabilité de l’offre à la demande, ou comment l’offre répond à la demande des hôpitaux. Nous travaillerons sur la population des plus de 75 ans dont nous calculons le nombre puis la part comprise dans chacune des aires d’influences. 
+</div> 
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+
+# aires d'influence des ressources   
+
+shp_r_voro <-  shp_hop
+
+
+shp_r_voro <- st_transform(shp_r_voro, st_crs(shp_iris))
+
+
+
+shp_r_geom <- st_geometry(shp_r_voro)
+
+
+
+# d?limitation de la surface occup?e par la zone d'étude  
+union_iris<- st_union(shp_iris)
+
+hull <- st_convex_hull(union_iris)
+
+union_iris_hull<- st_intersection(union_iris,hull)
+
+
+union_r<- st_union(shp_r_geom)
+
+hull2 <- st_convex_hull(union_r)
+
+# intersection de la surface occupée par les magasins biologiques avec la surface de la zone d'étude 
+voro_r<- st_intersection(union_iris,union_r)
+
+# délimitation des polygones ( Aires d'influences théoriques)
+voro <- st_voronoi(voro_r)
+
+
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+
+par(mfrow=c(1,1))
+par(mar = c(0.5,0.5,1.5,0.5),bg="grey")
+
+plot(st_geometry(shp_iris), col= "black", border= NA)
+
+plot(st_intersection(st_cast(voro),union_iris_hull), col = NA,border = "red", cex = 3, add=T)
+
+legend("topleft","Hopital       ",cex=.8,col="green",pch=19,box.lty=0,box.col=NA)
+legend("topright",c("Aires d'influence théoriques      "),cex= .8,col="red",lty=1, box.lty = 0,box.col = NA)
+
+plot(st_geometry(shp_hop),col="green", cex=0.3, add=T)
+
+
+layoutLayer(title = "Aires d'influence des hopitaux" ,
+            sources = "Panorama Trade dimensions (Nielsen 2017),GEOFLA (IGN 2015)",
+            author =" © Ramdane YAHIATENE,IFSTTAR / Univ-Paris1, 2019", 
+            tabtitle = FALSE,
+            frame = TRUE,theme = "black.pal",
+            south = TRUE)
+
+par(mfrow=c(1,1))
+par(mar = c(0.5,0.5,1.5,0.5),bg="grey")
+
+plot(st_geometry(shp_iris), col= "black", border= NA)
+
+plot(st_intersection(st_cast(voro),union_iris_hull), col = NA,border = "red", cex = 3, add=T)
+
+segments(cord_plus_proche$X,cord_plus_proche$Y, cord_plus_proche$x1,cord_plus_proche$y1,
+         col="white")
+
+legend("top",c("Lien    "),cex= .8,col="red",lty=1, box.lty = 0,box.col = NA)
+legend("topleft","Hopital       ",cex=.8,col="green",pch=19,box.lty=0,box.col=NA)
+legend("topright",c("Aires d'influence théoriques      "),cex= .8,col="red",lty=1, box.lty = 0,box.col = NA)
+
+plot(st_geometry(shp_hop),col="green", cex=0.3, add=T)
+
+
+layoutLayer(title = "Aires d'influence des hopitaux" ,
+            sources = "Panorama Trade dimensions (Nielsen 2017),GEOFLA (IGN 2015)",
+            author =" © Ramdane YAHIATENE,IFSTTAR / Univ-Paris1, 2019", 
+            tabtitle = FALSE,
+            frame = TRUE,theme = "black.pal",
+            south = TRUE)
+
+```
+
+
+# <font color=#2ca25f>Population par carreau / Population en fonction de la superficie du carreau intersecté / Population par polygones - Aires d'influences théorique</font>
+
+
+
+```{r}
+shp_car_insee <- st_read(dsn = "C:/Users/Ridon/Desktop/sig et analyse spatiale/GARD_CarroINSEE_statCARO_statRECT_L93_bis.shp", layer = "GARD_CarroINSEE_statCARO_statRECT_L93_bis")
+
+ind_age_8_rect <- shp_car_insee$ind_age8
+ind_c <- shp_car_insee$ind_c
+ind_r <- shp_car_insee$ind_r
+
+
+
+shp_car_insee$ind_age_8_car <- ind_age_8_rect*(ind_c/ind_r)
+
+shp_voro <- shp_iris
+b <- st_intersection(st_cast(voro),union_iris_hull) 
+shp_voro= b %>%
+st_sf %>%
+st_cast()
+
+shp_car_insee <- st_transform(shp_car_insee, st_crs(shp_voro))
+
+# jointure sptiale 
+
+geom_car_voro <- shp_voro %>% st_intersection(shp_car_insee)
+
+
+sup <- st_area(st_geometry(geom_car_voro))
+sup <- as.character(sup) %>% as.numeric(sup)
+
+
+superfice_initiale <- st_area(st_geometry(shp_car_insee))
+
+superfice_initiale <- as.character(superfice_initiale) %>% as.numeric(superfice_initiale)
+
+
+
+# cbind avec shp_com_arrang 
+shp_car_insee$sup_initiale <- superfice_initiale
+geom_car_voro$sup <- sup
+
+df_car <- as.data.frame(shp_car_insee)
+df_car<- st_drop_geometry(shp_car_insee)
+
+
+
+# jointure avec shp_voro 
+shp_car_voro_sup_initiale <- merge(geom_car_voro, df_car,by.x="id", by.y="id")
+
+
+# 
+
+super_intiale_car <- shp_car_voro_sup_initiale$sup_initiale
+super_new_car <- shp_car_voro_sup_initiale$sup
+
+
+#-------------------------------------------------------------------------------
+
+pop_initiale_car <- geom_car_voro$ind_c
+
+
+pop_initiale_age_8 <- geom_car_voro$ind_age_8_car
+
+geom_car_voro$pop_inters_age_8 <- pop_initiale_age_8*(super_new_car/super_intiale_car)
+
+geom_car_voro$pop_inters <-  pop_initiale_car*(super_new_car/super_intiale_car)
+
+
+ 
+# -----------------------------------------------
+inters_voro <- shp_voro %>% st_intersects(shp_car_insee)
+
+inters_voro <- as.data.frame(inters_voro)
+
+inters_voro <- inters_voro %>% arrange(col.id)
+
+
+inters_voro$pop_car <- geom_car_voro$pop_inters
+
+
+inters_voro$pop_age_8 <- geom_car_voro$pop_inters_age_8 
+
+
+
+
+voro_pop_car <- inters_voro %>% group_by(row.id) %>% summarise(nbre_pop_car=sum(pop_car))
+
+
+
+voro_pop_age_8 <- inters_voro %>% group_by(row.id) %>% summarise(nbre_pop_age_8=sum(pop_age_8))
+
+
+
+voro_part_pop_age_8 <- (voro_pop_age_8$nbre_pop_age_8 /voro_pop_car$nbre_pop_car)*100
+summary(voro_part_pop_age_8)
+
+voro_mat_adj_pop_car <- dcast(data = inters_voro,
+                          formula = row.id ~col.id,
+                          value.var ="pop_car")
+
+voro_mat_adj_pop_age_8 <- dcast(data = inters_voro,
+                          formula = row.id ~col.id,
+                          value.var ="pop_age_8")
+
+voro_mat_adj_pop_car <- voro_mat_adj_pop_car[,-1]
+
+voro_mat_adj_pop_age_8 <- voro_mat_adj_pop_age_8[,-1]
+
+
+voro_mat_adj_pop_car[is.na(voro_mat_adj_pop_car)] <- 0 
+
+voro_mat_adj_pop_age_8[is.na(voro_mat_adj_pop_age_8)] <- 0 
+
+
+
+
+pop_estim_car <-  apply(voro_mat_adj_pop_car,1,sum)
+
+pop_theo_age_8 <- apply(voro_mat_adj_pop_age_8,1,sum)
+
+
+shp_voro$nbre_pop_car_voro <-  pop_estim_car
+
+shp_voro$nbre_pop_age_8_voro <- pop_theo_age_8 
+
+shp_voro$part_pop_age_8_voro <- (pop_theo_age_8/pop_estim_car)*100 
+
+
+
+
+```
+
+
+```{r}
+par(mfrow=c(1,1))
+par(mar = c(0.5,0.5,1.5,0.5),bg="grey")
+plot(st_geometry(shp_voro),col=NA,border="grey")
+
+legend("topleft","Hopital       ",cex=.8,col="#2ca25f",pch=19,box.lty=0,box.col=NA)
+legend("topright",c("Aires d'influence théoriques      "),cex= .8,col="white",lty=1, box.lty = 0,box.col = NA)
+cols <- carto.pal(pal1 = "orange.pal", n1 = 4)# choix d'une palette de couleur 
+
+
+choroLayer(x = shp_voro, 
+           var = "part_pop_age_8_voro",
+           method ="quantile",
+           nclass = 4,
+           col = cols,
+           border = "white",
+           add = TRUE,
+           legend.horiz = F,
+           legend.frame = F,
+           legend.pos = "bottomright",
+           legend.border = F,
+           legend.title.txt = "Part de la population de 
+(+75 ans en (%))",
+           legend.values.rnd = 0)
+
+
+plot(st_geometry(shp_hop),col = "#2ca25f",add=T,cex=0.6,pch=19)
+
+layoutLayer(title = "Aires d'influence et part des populations agées" ,
+            sources = "http://opendata.gouv.fr,GEOFLA (IGN 2015)",
+            author =" © Ramdane YAHIATENE,IFSTTAR / Univ-Paris1, 2019", 
+            tabtitle = FALSE,
+            frame = TRUE,theme = "black.pal",
+            south = TRUE)
+
+
+```
+
+<div align="justify">
+La carte 1 présente une délimitation des aires d’influences théoriques pour chacun des hôpitaux avec la méthode de Voronoï 1908. La taille ou l’étendue des zones d’influence délimitées en blanc sur la carte 1 nous renseigne sur les dimensions théoriques de chaque aire d’influence et sur la manière dont les hôpitaux se répartissent des usagers potentiels. La taille des zones nous livre aussi des informations sur le nombre et sur la concurrence des hôpitaux. En fait, plus la taille de la zone d’influence théorique est grande, moins la présence des lieux de l’offre – service, les hôpitaux en l’occurrence, est grande. Nous faisons figurer en représentation zonale les parts des populations de plus de 75 ans comprises dans chacune des zones d’influence théoriques. 
+
+La couleur est utilisée sur cette carte avec la variable visuelle valeur : plus elle est claire et plus elle caractérise de faibles densités relatives des plus de 75 ans et inversement, plus la densité est forte – grande- et plus la couleur est intense, sombre. La discrétisation choisie est en effectifs égaux : il s’agit des quantiles où chaque classe correspond à 25 % des observations. Les classes sont bornées par le haut et par le bas par les valeurs maximale et minimale de la série. Ainsi, nous pouvons lire sur la carte que la moitié des unités spatiales déterminées comprennent une proportion de séniors inférieure à 10 %. Ces aires d’influences théoriques nous les observons globalement dans la partie centrale et particulièrement dans le Sud du département du Gard. En revanche les 25 % des aires d’influences comptant le plus de proportion de séniors – de 12 à 21 % - se situent globalement dans la partie Nord-ouest et la partie Ouest du département et se caractérisent souvent par une taille – étendue- relativement grande. 
+</div> 
+
+
+# <font color=#2ca25f>Distance au plus proche (proximité imédiate)</font>
+<div align="justify">
+Dans le but d’identifier des associations spatiales entre la présence des populations de plus de 75 ans et la proximité immédiate aux hôpitaux. Nous construisons une matrice des distances depuis les centroïde de chaque rectangle- rectangle de peuplement INSEE – vers les hôpitaux et nous identifions ensuite l’hôpital le plus proche qui correspond pour chaque ligne – rectangle- de la matrice à la distance minimale vers les hôpitaux. Nous agrégeons par la suite les rectangles selon les polygones – aires d’influence- les comprenant tout en calculant une distance moyenne vers les hôpitaux les plus proches pour chacun des polygones – des aires d’influences. Nous représentons et affichons le résultat dans la carte 2.
+</div> 
+
+```{r}
+# mise sur la mm projection 
+
+geom_car_voro <-st_transform(geom_car_voro, st_crs(shp_hop))
+
+
+centr_car <- st_centroid(st_geometry(geom_car_voro))
+
+localisation_r <- st_geometry(shp_hop)
+# construction d'une matrice de distance (carreaux_voro/hop )
+
+mat_dist_eucli <- st_distance(centr_car, localisation_r)
+
+# conversion des diatnces en km 
+units(mat_dist_eucli) <- with(ud_units, km)
+
+
+# identification de la ressource la plus proche 
+minDista<- apply(mat_dist_eucli, 1, min, na.rm=T)
+
+# ajout du calcul à la table de découpage des unités spatiales d'observation à base de spolygones 
+
+inters_voro$dist_plus_proche <- minDista
+
+
+# Aggréger les polygones et calcul d'une distance moyenne par polygonne ( distance moyenne polygonne/ hop le plus proche)
+
+
+inters_voro_dist <- inters_voro %>% group_by(row.id) %>% summarise(mean(dist_plus_proche))
+
+shp_voro$dist_moy_hop_pp <-  inters_voro_dist$`mean(dist_plus_proche)`
+
+
+
+```
+
+
+```{r}
+
+par(mfrow=c(1,1))
+par(mar = c(0.5,0.5,1.5,0.5),bg="grey")
+plot(st_geometry(shp_voro),col=NA,border="grey")
+
+
+
+cols <- carto.pal(pal1 = "turquoise.pal", n1 = 4)# choix d'une palette de couleur 
+
+
+choroLayer(x = shp_voro, 
+           var = "dist_moy_hop_pp",
+           method ="quantile",
+           nclass = 4,
+           col = cols,
+           border = "white",
+           add = TRUE,
+           legend.horiz = F,
+           legend.frame = F,
+           legend.pos = "bottomright",
+           legend.border = F,
+           legend.title.txt = "Distance moyenne
+à vol d'oiseau (en km)",
+           legend.values.rnd = 0)
+
+
+propSymbolsChoroLayer(x = shp_voro, var = "nbre_pop_car_voro", var2 = "part_pop_age_8_voro",
+                      col = carto.pal(pal1 = "red.pal", n1 = 4, transparency = T), inches = 0.2, 
+                      method = "quantile",
+                      nclass = 4, 
+                      add = T,
+                      border = "white", lwd = 0.5,
+                      legend.var.pos = "topleft", 
+                      legend.var2.pos = "topright",
+                      legend.var2.title.txt = "Part des plus 
+de 75 ans",
+                      legend.var.title.txt = "Population totale",
+                      legend.var.style = "c")
+
+
+layoutLayer(title = "Aires d'influence et populations théoriques (totale & cible) et la proximité moyenne aux hopitaux" ,
+            sources = "http://opendata.gouv.fr, INSEE & GEOFLA (IGN)",
+            author =" © Ramdane YAHIATENE, Univ-Paris1, 2019", 
+            tabtitle = FALSE,
+            frame = TRUE,theme = "black.pal",
+            south = TRUE)
+
+```
+
+<div align="justify">
+En croisant la proximité immédiate et la part des séniors, la carte 2 nous permet de questionner l’équité spatiale de la distribution des hôpitaux quant à des populations qui à priori sont plus susceptibles à fréquenter un hôpital. En ce sens, nous observons de la carte 2 que les aires d’influences comprenant relativement les plus fortes proportions de séniors sont également en moyenne – distance moyenne- et géométriquement parlant (distance à vol d’oiseau) les plus éloignées des hôpitaux. 
+
+Cependant, les cartes 1 & 2 seraient largement contestable dans la mesure où la redirection des lieux de demande vers le lieu de l’offre le plus proche est une approche très simpliste des comportements des populations cibles. L’usager potentiel ne se dirigera pas forcément vers l’hôpital qui lui est le plus proche. Par une telle méthode les hôpitaux sont appréhendés comme étant des lieux d’offre équivalente alors qu’en réalité un hôpital diffère d’un autre selon les services qu’ils assurent ou les équipements dont il dispose ou le nombre de place qu’il propose. Ces caractéristiques de taille ou de la qualité du service mettent l’usager devant un panel de choix divergents et c’est en ce sens que la notion d’utilité reposant sur l’attractivité intervient dans le choix de l’usager de la ressource qu’il lui conviendrait le mieux. La troisième limite majeure d’une telle approche simplificatrice est le fait qu’elle repose sur des distances continues – métrique euclidienne – alors que le plus proche spatialement sur un réseau optimal théorique n’est pas forcément le plus proche en réalité – sur un réseau de transport réel. 
+</div> 
+
+# <font color=#2ca25f>avec une zone tampon autour des hopitaux</font>
+
+<div align="justify">
+Pour une meilleure prise en compte de la distance nous déterminons un rayon de distance géométrique autour des hôpitaux et nous calculons le nombre de population des plus de 75 ans comprises dans ces zones tampon. Nous affichons dans la carte 3 le résultat sous forme de symboles proportionnels partant des hôpitaux pour un rayon de distance de 1 km – immédiate proximité.  
+</div> 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+
+shp_hop_buf <- st_buffer(shp_hop,dist=1000)
+
+shp_car_insee <- st_transform(shp_car_insee, st_crs(shp_hop_buf))
+
+geom_car_hop_buf <- shp_hop_buf %>% st_intersection(shp_car_insee)
+
+
+
+
+sup <- st_area(st_geometry(geom_car_hop_buf))
+sup <- as.character(sup) %>% as.numeric(sup)
+
+
+superfice_initiale <- st_area(st_geometry(shp_car_insee))
+
+superfice_initiale <- as.character(superfice_initiale) %>% as.numeric(superfice_initiale)
+
+ 
+
+# cbind avec shp_com_arrang 
+shp_car_insee$sup_initiale <- superfice_initiale
+geom_car_hop_buf$sup <- sup
+
+df_car <- as.data.frame(shp_car_insee)
+df_car<- st_drop_geometry(shp_car_insee)
+
+
+#-------------------------------------------------------------------------------
+
+pop_initiale_car <- geom_car_hop_buf$ind_c
+
+# jointure avec shp_voro 
+shp_car_hop_buf_sup_initiale <- merge(geom_car_hop_buf, df_car,by.x="id", by.y="id")
+
+
+
+#-------------------------------------------------------------------------------
+
+
+pop_initiale_age_8 <- geom_car_hop_buf$ind_age_8_car
+
+super_intiale_car <- shp_car_hop_buf_sup_initiale$sup_initiale.y
+
+super_new_car <- shp_car_hop_buf_sup_initiale$sup
+
+pop_initiale_car <- geom_car_hop_buf$ind_c
+
+pop_initiale_age_8 <- geom_car_hop_buf$ind_age_8_car
+
+
+geom_car_hop_buf$pop_inters_age_8 <- pop_initiale_age_8*(super_new_car/super_intiale_car)
+
+geom_car_hop_buf$pop_inters <-  pop_initiale_car*(super_new_car/super_intiale_car)
+
+
+
+
+# -----------------------------------------------
+inters_buf <- shp_hop_buf %>% st_intersects(shp_car_insee)
+
+inters_buf <- as.data.frame(inters_buf)
+
+inters_buf <- inters_buf %>% arrange(col.id)
+
+
+inters_buf$pop_car <- geom_car_hop_buf$pop_inters
+
+
+inters_buf$pop_age_8 <- geom_car_hop_buf$pop_inters_age_8 
+
+
+
+buf_pop_car <- inters_buf %>% group_by(row.id) %>% summarise(nbre_pop_car=sum(pop_car))
+
+
+
+buf_pop_age_8 <- inters_buf %>% group_by(row.id) %>% summarise(nbre_pop_age_8=sum(pop_age_8))
+
+
+
+buf_part_pop_age_8 <- (buf_pop_age_8$nbre_pop_age_8 /buf_pop_car$nbre_pop_car)*100
+
+
+
+shp_hop_buf$part_age_8 <-  buf_part_pop_age_8
+
+shp_hop_buf$nbre_age_8 <-  buf_pop_age_8$nbre_pop_age_8
+
+
+
+voro_mat_adj_pop_car <- dcast(data = inters_voro,
+                          formula = row.id ~col.id,
+                          value.var ="pop_car")
+
+voro_mat_adj_pop_age_8 <- dcast(data = inters_voro,
+                          formula = row.id ~col.id,
+                          value.var ="pop_age_8")
+
+voro_mat_adj_pop_car <- voro_mat_adj_pop_car[,-1]
+
+voro_mat_adj_pop_age_8 <- voro_mat_adj_pop_age_8[,-1]
+
+
+voro_mat_adj_pop_car[is.na(voro_mat_adj_pop_car)] <- 0 
+
+voro_mat_adj_pop_age_8[is.na(voro_mat_adj_pop_age_8)] <- 0 
+
+
+
+
+pop_estim_car <-  apply(voro_mat_adj_pop_car,1,sum)
+
+pop_theo_age_8 <- apply(voro_mat_adj_pop_age_8,1,sum)
+
+
+shp_voro$nbre_pop_car_voro <-  pop_estim_car
+
+shp_voro$nbre_pop_age_8_voro <- pop_theo_age_8 
+
+shp_voro$part_pop_age_8_voro <- (pop_theo_age_8/pop_estim_car)*100 
+
+
+```
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+par(mar = c(0.5,0.5,1.5,0.5),bg="grey")
+plot(shp_dep$geometry, col="grey90")
+
+# Cartographie
+propSymbolsLayer(x = shp_hop_buf, var = "nbre_age_8" ,  # Carte en figures proportionnels 
+                 symbols = "circle", col =carto.pal(pal1 = "blue.pal", n1=1, transparency=T),inches = .25,
+                 legend.pos = "bottomleft", border = "white",
+                 legend.title.txt = "Nombre de personnes agées 
+(les + de 75 ans)",
+                 legend.frame = F,
+                 legend.style = "c")
+
+
+layoutLayer(title = "Nombre de personnes agées dans un rayon de 1km autour des hopitaux",
+            tabtitle = FALSE,
+            frame = TRUE,theme = "black.pal",
+            sources ="http://opendata.gouv.fr,GEOFLA (IGN)",
+            south = TRUE)
+
+mtext("Ramdane YAHIATENE,Univ-Paris1, 2019", side = 4, line=-1,cex = 0.7)
+
+
+```
+
+<div align="justify">
+Nous observons de la carte 3 qu’à distance égale des hôpitaux y’a bien une différence notable en termes de populations – stock- se situant à proximité immédiate des hôpitaux. Le nombre varie entre 0 et 3654 personnes (de + 75 ans). Nous notons une concentration relativement forte dans les parties centrales au Nord et Sud du département autour de « Nîmes » et « Alès » ainsi qu’à l’est vers « Bagnols-sur-Cèze ». A l’ouest, si nous nous limitons à ce rayon de distance de « 1km » il n y’a quasiment pas de populations âgées autour des hôpitaux – càd qu’elles sont plus éloignées. La démarche est jusqu’ici très déterministe et théorique. Alors, il serait donc plus judicieux de mener une analyse probabiliste visant à estimer le potentiel spatial en hôpital et en population cible – les plus de 75 ans- sur un réseau fonctionnel – le réseau routier par exemple. 
+</div> 
+
+# <font color=#2ca25f>De la distance à vol d'oiseau à la distance réseau ( Temps de trajets)</font>
+<div align="justify">
+Le résultat affiché dans la carte 4 (ci-dessous) est une mesure d’un potentiel gravitationnel avec la méthode de Stewart 1973 et correspond à la somme des possibilités de choix en hôpitaux offerts à chaque lieu (i) de l’espace–indépendamment d’un maillage territorial - dans un voisinage (j) de 15 minutes de temps de trajet par voiture. - à une vitesse maximale, optimale et peu réaliste en raison de la non-prise en compte de la congestion du réseau qui aurait été variable selon la typologie des routes (capacité, fréquentation, vocation…etc). 
+
+Cependant, ce résultat est moins théorique que les précédents car il tient à la fois compte de l’attractivité des lieux (j) se traduisant par la masse d’opportunités qu’ils offrent et de la distance séparant les lieux (i) des lieux (j) à une portée de distance donnée- ici 15 minutes. Cela veut dire que la mesure dépend également d’un réseau pouvant « potentiel » relier les lieux « i » aux lieux « j ». Le potentiel calculé sera proportionnel à la masse d’opportunités, et inversement proportionnels à la distance. En ce sens, nous observons alors sur la carte 4 deux composantes spatiales centrales autour de « Nîmes » et « Alès » caractérisées par un relatif fort potentiel en hôpitaux avec un potentiel plus fort autour de Nîmes – chef-lieu du département. La partie Ouest, notamment la partie la plus à l’ouest, du département est caractérisée par un potentiel faible mais faudrait noter qu’elle est peu peuplée (voir carte 2) et correspond principalement à un parc national (voir carte4) donc nous supposons que c’est des populations aisées qui y habitent.  
+
+</div> 
+
+```{r include=FALSE}
+options(osrm.server = "http://195.220.198.189/osrm/", osrm.profile = "driving")
+
+```
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+#options(osrm.server = "http://adressse_du_serveur/osrm/", osrm.profile = "driving")
+
+
+
+grille <- CreateGrid(w =shp_iris , resolution = 5000, 
+                   returnclass = "sf")
+
+#options(osrm.server = "http://dep-info-...", osrm.profile = "driving")
+
+matrice_temps_trajet<- osrmTable(src = shp_hop, dst= grille)
+
+
+matrice_temps_trajet<-matrice_temps_trajet$durations
+
+shp_hop <- shp_hop %>% mutate(n=1)
+
+
+# potentiel de stewart (beta =2) 
+
+pot_r <- stewart(knownpts = shp_hop, 
+                      unknownpts = grille, 
+                      varname = 'n', 
+                      matdist = matrice_temps_trajet,
+                      span =15, 
+                      beta = 2, 
+                      typefct = "exponential", 
+                      returnclass = "sf")
+summary(pot_r$OUTPUT)
+
+breaks <- c(0,1,2,seq(5,30,by=5),max(pot_r$OUTPUT))
+
+View(shp_car_insee)
+
+rastPot_r<- rasterStewart(pot_r)
+
+spat_iris <- as_Spatial(st_geometry(shp_iris))
+
+conPot_r<- rasterToContourPoly(r = rastPot_r,
+                                  mask = spat_iris,
+                                  breaks = breaks)
+
+
+```
+
+
+```{r}
+
+
+col <- carto.pal(pal1 = "turquoise.pal",n1=10, transparency = T)
+
+
+osm <- getTiles(shp_iris, crop=TRUE, zoom =10)
+
+par(mar = c(0.5,0.5,1.5,0.5), bg="lightgrey")
+
+tilesLayer(osm)
+
+choroLayer(spdf = conPot_r,
+           df = conPot_r@data,
+           var = "center",
+           breaks = breaks,
+           border = F,
+           legend.title.cex = 0.7,
+           legend.frame = FALSE,
+           legend.pos = "topleft",
+           legend.title.txt = "Nombre potentiel
+d'hopitaux",
+           col = col,
+           legend.horiz =F,
+           legend.border = F,
+           legend.values.rnd = 0,
+           add = T, 
+           colNA ="red" )
+plot(shp_dep$geometry, col=NA, add=T)
+
+layoutLayer(title = "Nombre potentiel d'hopitaux dans un voisinage de 15 minutes par voiture",
+            tabtitle = FALSE,
+            author= " Ramdane YAHIATENE, Univ-Paris1, 2019", 
+            sources ="http://opendata.gouv.fr,GEOFLA (IGN), \nc OpenStreetMap contributors. www.openstreetmap.org/copyright" ,
+            frame = TRUE,theme = "black.pal",
+            south = TRUE)
+
+```
+
+<div align="justify">
+Nous retenons des résultats que nous avons obtenus que chacun des scénarios mis en œuvre présente des limites, dans la mesure où chaque résultat correspond à une modélisation de la réalité. Cependant il serait intéressant de les confronter à des résultats de fréquentations réelles des hôpitaux. Il est également intéressant de calculer l’accessibilité globale géométrique et routière et mesurer par la suite le ratio entre les deux mesures. Le résultat correspond à un indice d’efficacité routière, qui quand il est supérieur à 1, indique le réseau favorise l’accessibilité des lieux dans la mesure où il l’améliore quant à une situation d’éloignement géométrique sur un réseau optimal qui détermine au départ la centralité.  Cela nous permettra d’observer si les lieux les plus éloignés – éloignement géométrique- sont les plus favorisés par le réseau qui correspondrait à une situation qui serait selon un principe d’équité au sens de Jhon RAWLS « maxi-min », juste. (Justice spatiale)
+</div> 
+

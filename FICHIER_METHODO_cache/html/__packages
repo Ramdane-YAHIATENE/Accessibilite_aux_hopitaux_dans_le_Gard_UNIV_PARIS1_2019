@@ -1,0 +1,9 @@
+base
+sf
+dplyr
+cartography
+reshape2
+units
+osrm
+ggplot2
+SpatialPosition
