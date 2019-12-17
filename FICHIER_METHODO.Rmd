@@ -292,31 +292,28 @@ superfice_initiale <- st_area(st_geometry(shp_car_insee))
 
 superfice_initiale <- as.character(superfice_initiale) %>% as.numeric(superfice_initiale)
 
+# superficie initiale / superficie aprés intersection 
 
-
-# cbind avec shp_com_arrang 
 shp_car_insee$sup_initiale <- superfice_initiale
 geom_car_voro$sup <- sup
 
+# trasformation en df ( necessaire pour le merge- jointure ) 
+
 df_car <- as.data.frame(shp_car_insee)
 df_car<- st_drop_geometry(shp_car_insee)
-
 
 
 # jointure avec shp_voro 
 shp_car_voro_sup_initiale <- merge(geom_car_voro, df_car,by.x="id", by.y="id")
 
 
-# 
-
 super_intiale_car <- shp_car_voro_sup_initiale$sup_initiale
 super_new_car <- shp_car_voro_sup_initiale$sup
 
 
-#-------------------------------------------------------------------------------
+#------------------------ population en fonction de la surface intersectée -------------------------------
 
 pop_initiale_car <- geom_car_voro$ind_c
-
 
 pop_initiale_age_8 <- geom_car_voro$ind_age_8_car
 
@@ -326,7 +323,9 @@ geom_car_voro$pop_inters <-  pop_initiale_car*(super_new_car/super_intiale_car)
 
 
  
-# -----------------------------------------------
+# ---------population par polygonne [regrouper les unités sptiale selon le polygonne d'appartenance tout en calculant la somme de 
+la population des séniors incluses dans celles-ci] -------------------
+
 inters_voro <- shp_voro %>% st_intersects(shp_car_insee)
 
 inters_voro <- as.data.frame(inters_voro)
@@ -340,18 +339,13 @@ inters_voro$pop_car <- geom_car_voro$pop_inters
 inters_voro$pop_age_8 <- geom_car_voro$pop_inters_age_8 
 
 
-
-
 voro_pop_car <- inters_voro %>% group_by(row.id) %>% summarise(nbre_pop_car=sum(pop_car))
-
 
 
 voro_pop_age_8 <- inters_voro %>% group_by(row.id) %>% summarise(nbre_pop_age_8=sum(pop_age_8))
 
 
-
 voro_part_pop_age_8 <- (voro_pop_age_8$nbre_pop_age_8 /voro_pop_car$nbre_pop_car)*100
-summary(voro_part_pop_age_8)
 
 voro_mat_adj_pop_car <- dcast(data = inters_voro,
                           formula = row.id ~col.id,
@@ -371,12 +365,13 @@ voro_mat_adj_pop_car[is.na(voro_mat_adj_pop_car)] <- 0
 voro_mat_adj_pop_age_8[is.na(voro_mat_adj_pop_age_8)] <- 0 
 
 
-
+# population totale et population de + 75 ans par polygonne- aires d'influence théorique.
 
 pop_estim_car <-  apply(voro_mat_adj_pop_car,1,sum)
 
 pop_theo_age_8 <- apply(voro_mat_adj_pop_age_8,1,sum)
 
+# ajout des calculs au shp pour les cartographier 
 
 shp_voro$nbre_pop_car_voro <-  pop_estim_car
 
@@ -384,13 +379,11 @@ shp_voro$nbre_pop_age_8_voro <- pop_theo_age_8
 
 shp_voro$part_pop_age_8_voro <- (pop_theo_age_8/pop_estim_car)*100 
 
-
-
-
 ```
 
 
 ```{r}
+
 par(mfrow=c(1,1))
 par(mar = c(0.5,0.5,1.5,0.5),bg="grey")
 plot(st_geometry(shp_voro),col=NA,border="grey")
@@ -424,8 +417,6 @@ layoutLayer(title = "Aires d'influence et part des populations agées" ,
             tabtitle = FALSE,
             frame = TRUE,theme = "black.pal",
             south = TRUE)
-
-
 ```
 
 <div align="justify">
@@ -471,7 +462,6 @@ inters_voro$dist_plus_proche <- minDista
 inters_voro_dist <- inters_voro %>% group_by(row.id) %>% summarise(mean(dist_plus_proche))
 
 shp_voro$dist_moy_hop_pp <-  inters_voro_dist$`mean(dist_plus_proche)`
-
 
 
 ```
@@ -560,8 +550,6 @@ superfice_initiale <- st_area(st_geometry(shp_car_insee))
 superfice_initiale <- as.character(superfice_initiale) %>% as.numeric(superfice_initiale)
 
  
-
-# cbind avec shp_com_arrang 
 shp_car_insee$sup_initiale <- superfice_initiale
 geom_car_hop_buf$sup <- sup
 
@@ -704,21 +692,15 @@ Cependant, ce résultat est moins théorique que les précédents car il tient �
 
 </div> 
 
-```{r include=FALSE}
-options(osrm.server = "http://195.220.198.189/osrm/", osrm.profile = "driving")
-
-```
 
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+# connexion à un serveur - permettant d'interroger la Bdd OpenStreetMap - est requise 
 #options(osrm.server = "http://adressse_du_serveur/osrm/", osrm.profile = "driving")
-
-
 
 grille <- CreateGrid(w =shp_iris , resolution = 5000, 
                    returnclass = "sf")
 
-#options(osrm.server = "http://dep-info-...", osrm.profile = "driving")
 
 matrice_temps_trajet<- osrmTable(src = shp_hop, dst= grille)
 
@@ -738,7 +720,6 @@ pot_r <- stewart(knownpts = shp_hop,
                       beta = 2, 
                       typefct = "exponential", 
                       returnclass = "sf")
-summary(pot_r$OUTPUT)
 
 breaks <- c(0,1,2,seq(5,30,by=5),max(pot_r$OUTPUT))
 
