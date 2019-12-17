@@ -33,7 +33,6 @@ library(osrm)
 library(ggplot2)
 library(SpatialPosition)
     
-
 ```
 
 # <font color=#2ca25f>Chargement des données</font>
