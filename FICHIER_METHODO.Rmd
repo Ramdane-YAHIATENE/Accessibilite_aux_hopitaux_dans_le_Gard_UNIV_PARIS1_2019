@@ -691,10 +691,6 @@ Cependant, ce résultat est moins théorique que les précédents car il tient �
 
 </div> 
 
-```{r include=FALSE}
-options(osrm.server = "http://195.220.198.189/osrm/", osrm.profile = "driving")
-```
-
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
 # connexion à un serveur - permettant d'interroger la Bdd OpenStreetMap - est requise 
