@@ -1,5 +1,5 @@
 ---
-title: <font color="#CC0000">Exercice d'application ; analyse de l'accessibilité aux hopitaux dans le dépertement du Gard- Occitanie<div align="center"></div></font>
+title: <font color="#CC0000">Exercice d'application ; analyse de l'accessibilité aux hopitaux dans le département du Gard- Occitanie<div align="center"></div></font>
 author : <font color="red">Ramdane YAHIATENE</font>
 date: <font color="red">26/11/2019</font>
 output:
@@ -322,8 +322,8 @@ geom_car_voro$pop_inters <-  pop_initiale_car*(super_new_car/super_intiale_car)
 
 
  
-# ---------population par polygonne [regrouper les unités sptiale selon le polygonne d'appartenance tout en calculant la somme de 
-la population des séniors incluses dans celles-ci] -------------------
+# ---population par polygonne [regrouper les unités sptiale selon le polygonne d'appartenance tout en calculant la somme de 
+#la population des séniors incluses dans celles-ci] -------------------
 
 inters_voro <- shp_voro %>% st_intersects(shp_car_insee)
 
@@ -691,6 +691,9 @@ Cependant, ce résultat est moins théorique que les précédents car il tient �
 
 </div> 
 
+```{r include=FALSE}
+options(osrm.server = "http://195.220.198.189/osrm/", osrm.profile = "driving")
+```
 
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
@@ -776,6 +779,14 @@ layoutLayer(title = "Nombre potentiel d'hopitaux dans un voisinage de 15 minutes
 ```
 
 <div align="justify">
-Nous retenons des résultats que nous avons obtenus que chacun des scénarios mis en œuvre présente des limites, dans la mesure où chaque résultat correspond à une modélisation de la réalité. Cependant il serait intéressant de les confronter à des résultats de fréquentations réelles des hôpitaux. Il est également intéressant de calculer l’accessibilité globale géométrique et routière et mesurer par la suite le ratio entre les deux mesures. Le résultat correspond à un indice d’efficacité routière, qui quand il est supérieur à 1, indique le réseau favorise l’accessibilité des lieux dans la mesure où il l’améliore quant à une situation d’éloignement géométrique sur un réseau optimal qui détermine au départ la centralité.  Cela nous permettra d’observer si les lieux les plus éloignés – éloignement géométrique- sont les plus favorisés par le réseau qui correspondrait à une situation qui serait selon un principe d’équité au sens de Jhon RAWLS « maxi-min », juste. (Justice spatiale)
+Nous retenons des résultats que nous avons obtenus que chacun des scénarios mis en œuvre présente des limites, dans la mesure où chaque résultat correspond à une modélisation de la réalité. Cependant il serait intéressant de les confronter à des résultats de fréquentations réelles des hôpitaux. Il est également intéressant de calculer l’accessibilité globale géométrique et routière et mesurer par la suite le ratio entre les deux mesures. Le résultat correspond à un indice « d’efficacité routière » Claude GRASLAND & Nadine CATAN 1997, qui quand il est supérieur à 1, indique le réseau favorise l’accessibilité des lieux dans la mesure où il l’améliore quant à une situation d’éloignement géométrique sur un réseau optimal qui détermine au départ la centralité.  Cela nous permettra d’observer si les lieux les plus éloignés – éloignement géométrique- sont les plus favorisés par le réseau qui correspondrait à une situation qui serait selon un principe d’équité au sens de Jhon RAWLS « maxi-min », juste. (Justice spatiale)
 </div> 
+
+<div align="justify">**Pour citer le travil:**</div>
+<div align="justify">Ramdane.Y, 2019, <i>Analyse de l’accessibilité spatiale aux hopitaux dans le département du Gard en région d’Occitanie </i>, Exercice d’application réalisé dans le cadre du master 2 Géoprisme, Univ / Paris 1- Panthéon Sorbonne
+</div>
+
+<div align="justify">**En s'inspirant du travail:**</div>
+<div align="justify">Ramdane.Y, 2019, <i> Analyse cartographique de l'accessibilité spatiale aux aménités urbaines</i>, IFSTTAR / Univ.Paris1, sous la direction de Françoise BAHOKEN (IFSTTAR/AME) & Clarisse DIDELON-LOISEAU. (Univ.Paris1)
+</div>
 
