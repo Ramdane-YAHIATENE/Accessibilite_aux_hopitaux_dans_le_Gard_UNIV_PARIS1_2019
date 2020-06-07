@@ -778,7 +778,7 @@ layoutLayer(title = "Nombre potentiel d'hopitaux dans un voisinage de 15 minutes
 Nous retenons des résultats que nous avons obtenus que chacun des scénarios mis en œuvre présente des limites, dans la mesure où chaque résultat correspond à une modélisation de la réalité. Cependant il serait intéressant de les confronter à des résultats de fréquentations réelles des hôpitaux. Il est également intéressant de calculer l’accessibilité globale géométrique et routière et mesurer par la suite le ratio entre les deux mesures. Le résultat correspond à un indice « d’efficacité routière » Claude GRASLAND & Nadine CATAN 1997, qui quand il est supérieur à 1, indique le réseau favorise l’accessibilité des lieux dans la mesure où il l’améliore quant à une situation d’éloignement géométrique sur un réseau optimal qui détermine au départ la centralité.  Cela nous permettra d’observer si les lieux les plus éloignés – éloignement géométrique- sont les plus favorisés par le réseau qui correspondrait à une situation qui serait selon un principe d’équité au sens de Jhon RAWLS « maxi-min », juste. (Justice spatiale)
 </div> 
 
-<div align="justify">**Pour citer le travil:**</div>
+<div align="justify">**Pour citer le travail:**</div>
 <div align="justify">Ramdane.Y, 2019, <i>Analyse de l’accessibilité spatiale aux hopitaux dans le département du Gard en région d’Occitanie </i>, Exercice d’application réalisé dans le cadre du master 2 Géoprisme, Univ / Paris 1- Panthéon Sorbonne
 </div>
 
